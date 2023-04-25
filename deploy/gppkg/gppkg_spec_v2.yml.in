@@ -1,0 +1,45 @@
+Format: V2
+Pkgname: madlib
+Architecture: @CPACK_RPM_PACKAGE_ARCHITECTURE@
+Version: @MADLIB_VERSION_STRING_NO_HYPHEN@@GPPKG_VER@-@GPDB_VARIANT_SHORT@@GPDB_VERSION_LC@
+OS: rhel@RH_MAJOR_VERSION@
+Description: Madlib is an open source library which provides scalable in-database analytics. It provides data-parallel implementations of mathematical, statistical and machine learning methods for structured and unstructured data.
+PostInstall:
+  Coordinator: |
+      echo 'Please run the following command to deploy MADlib';
+      echo 'usage:  madpack install [-s schema_name] -p @PORT_NAME@ -c user@host:port/database';
+      echo 'Example:';
+      echo '       $ $GPHOME/madlib/bin/madpack install -s madlib -p @PORT_NAME@ -c gpadmin@mdw:5432/testdb';
+      echo '       This will install MADlib objects into a @GPDB_VARIANT@ database named \"testdb\"';
+      echo '       running on server \"mdw\" on port 5432. Installer will try to login as \"gpadmin\"';
+      echo '       and will prompt for password. The target schema will be \"madlib\".';
+      echo '       To upgrade to a new version of MADlib from version v@UPGRADE_SUPPORT@ or later, use option \"upgrade\",';
+      echo '       instead of \"install\" ';
+      echo 'For additional options run:';
+      echo '$ madpack --help';
+      echo 'Release notes and additional documentation can be found at http://madlib.apache.org';
+  All: |
+      MADLIB_VERSION="$GPPKG_PACKAGE_VERSION"
+      PREFIX="$GPPKG_INSTALL_PREFIX"
+
+      # Remove existing soft links
+      find $PREFIX/madlib/bin -depth -type l -exec rm {} \; 2>/dev/null
+      find $PREFIX/madlib/doc -depth -type l -exec rm {} \; 2>/dev/null
+      find $PREFIX/madlib/Current -depth -type l -exec rm {} \; 2>/dev/null
+
+      ln -nsf $PREFIX/madlib/Versions/$MADLIB_VERSION $PREFIX/madlib/Current
+      ln -nsf $PREFIX/madlib/Current/bin $PREFIX/madlib/bin
+      ln -nsf $PREFIX/madlib/Current/doc $PREFIX/madlib/doc
+PostUninstall:
+  All: |
+      PREFIX="$GPPKG_INSTALL_PREFIX"
+
+      # remove symlinks created during rpm install
+      find $PREFIX/madlib/Current -depth -type l -exec rm {} \; 2>/dev/null
+      find $PREFIX/madlib/bin -depth -type l -exec rm {} \; 2>/dev/null
+      find $PREFIX/madlib/doc -depth -type l -exec rm {} \; 2>/dev/null
+
+      # remove "Versions" directory if it's empty
+      if [ -d $PREFIX/madlib/Versions ]; then
+          rmdir $PREFIX/madlib/Versions 2>/dev/null
+      fi

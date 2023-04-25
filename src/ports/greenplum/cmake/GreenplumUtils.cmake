@@ -49,8 +49,12 @@ function(add_gppkg GPDB_VERSION GPDB_VARIANT GPDB_VARIANT_SHORT UPGRADE_SUPPORT)
         gppkg_spec.yml.in
         \"\${CMAKE_CURRENT_BINARY_DIR}/${GPDB_VERSION}/gppkg/gppkg_spec.yml\"
     )
+    configure_file(
+        gppkg_spec_v2.yml.in
+        \"\${CMAKE_CURRENT_BINARY_DIR}/${GPDB_VERSION}/gppkg/gppkg_spec_v2.yml\"
+    )
 
-    if(GPPKG_BINARY AND RPMBUILD_BINARY)
+    if(HAS_GPPKGV1_BINARY AND RPMBUILD_BINARY) # gppkg v1 need work with rpm
         add_custom_target(gppkg_${GPDB_VARIANT}_${VERSION_}
             COMMAND cmake -E create_symlink \"\${MADLIB_GPPKG_RPM_SOURCE_DIR}\"
                 \"\${CPACK_PACKAGE_FILE_NAME}-gppkg\"
@@ -63,12 +67,24 @@ function(add_gppkg GPDB_VERSION GPDB_VARIANT GPDB_VARIANT_SHORT UPGRADE_SUPPORT)
             COMMENT \"Generating ${GPDB_VARIANT} ${GPDB_VERSION} gppkg installer...\"
             VERBATIM
         )
-    else(GPPKG_BINARY AND RPMBUILD_BINARY)
+    elseif(HAS_GPPKGV2_BINARY) # gppkg v2 does not depends on rpm or deb
+        include(${CMAKE_BINARY_DIR}/CPackConfig.cmake)
+        add_custom_target(gppkg_${GPDB_VARIANT}_${VERSION_}
+            COMMAND cpack --config ${CMAKE_BINARY_DIR}/CPackConfig.cmake -G TGZ -B ${CMAKE_BINARY_DIR}
+            COMMAND rm -rf gppkg_build/files
+            COMMAND mkdir -p gppkg_build/files
+            COMMAND tar xfz \"\${CMAKE_BINARY_DIR}/\${CPACK_PACKAGE_FILE_NAME}.tar.gz\" --strip-components=1 -C gppkg_build/files
+            COMMAND \"\${GPPKG_BINARY}\" build --input gppkg_build/files --config "${CMAKE_BINARY_DIR}/deploy/gppkg/${GPDB_VERSION}/gppkg/gppkg_spec_v2.yml" --output \"\${CPACK_PACKAGE_FILE_NAME}.gppkg\"
+            WORKING_DIRECTORY \"\${CMAKE_CURRENT_BINARY_DIR}/${GPDB_VERSION}\"
+            COMMENT \"Generating ${GPDB_VARIANT} ${GPDB_VERSION} gppkg installer...\"
+            VERBATIM
+        )
+    else()
         add_custom_target(gppkg_${GPDB_VARIANT}_${VERSION_}
             COMMAND cmake -E echo \"Could not find gppkg and/or rpmbuild.\"
                 \"Please rerun cmake.\"
         )
-    endif(GPPKG_BINARY AND RPMBUILD_BINARY)
+    endif()
 
     # Unfortunately, we cannot set a dependency to the built-in package target,
     # i.e., the following does not work:

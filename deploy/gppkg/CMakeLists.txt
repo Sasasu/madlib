@@ -7,20 +7,35 @@ set(MADLIB_GPPKG_RELEASE_NUMBER 1)
 set(MADLIB_GPPKG_RPM_SOURCE_DIR
     "${CMAKE_BINARY_DIR}/_CPack_Packages/Linux/RPM/${CPACK_PACKAGE_FILE_NAME}"
 )
-# gppkg expects that the file name for the RPM from which the gppkg is generated
+
+# gppkg v1 expects that the file name for the RPM from which the gppkg is generated
 # follows the pattern "<name>-<version>-<release>.<arch>.rpm". Otherwise,
-# uninstallation will not work (MPP-18078). Note that <version> has to be
-# consistent with the version in madlib.spec.in. gppkg deduces the
-# uninstallation command line options from the filename!
+# uninstallation will not work (MPP-18078).
+# Note that <version> has to be consistent with the version in madlib.spec.in.
+# gppkg v1 deduces the uninstallation command line options from the filename!
 set(MADLIB_GPPKG_RPM_FILE_NAME
     "madlib-${MADLIB_VERSION_STRING_NO_HYPHEN}-${MADLIB_GPPKG_RELEASE_NUMBER}.${CPACK_RPM_PACKAGE_ARCHITECTURE}.rpm")
 
 find_program(
     GPPKG_BINARY
     gppkg
-    PATH /usr/local/greenplum-db/bin
     DOC "Path to gppkg"
 )
+
+if(GPPKG_BINARY)
+    # gppkg v1 version string: gppkg version \d.\d.\d .*
+    # gppkg v2 version string: gppkg \d.\d.\d
+    execute_process(COMMAND gppkg --version OUTPUT_VARIABLE GPPKG_VERSION_STRING)
+    string(FIND "${GPPKG_VERSION_STRING}" "gppkg version" FIND_GPPKG_V1_VERSION_STRING)
+
+    if(${FIND_GPPKG_V1_VERSION_STRING} EQUAL "0")
+        set(HAS_GPPKGV1_BINARY "True")
+    else()
+        set(HAS_GPPKGV2_BINARY "True")
+    endif()
+
+endif(GPPKG_BINARY)
+
 find_program(
     RPMBUILD_BINARY
     rpmbuild
